@@ -1,5 +1,6 @@
 package controllers;
 
+import models.Audience3rdAccessLog;
 import play.Play;
 import play.mvc.*;
 import play.Logger;
@@ -88,6 +89,8 @@ public class MicroDmpCore extends Controller {
             Logger.debug("Cookie Exist!");
             Logger.debug(cookie.value());
             response().setCookie(COOKIE_ID_KEY, cookie.value(), COOKIE_MAX_AFTER_AGE);
+
+            saveAudience3rdAccessLog(cookie.value(), false);
             return;
         }
         // IDがなかったらID生成
@@ -100,7 +103,9 @@ public class MicroDmpCore extends Controller {
         public void setCookie(String name, String value, Integer maxAge, String path, String domain, boolean secure, boolean httpOnly);
          */
 
-        response().setCookie(COOKIE_ID_KEY, generateUniqueId(), COOKIE_MAX_AFTER_AGE);
+        String id =  generateUniqueId();
+        response().setCookie(COOKIE_ID_KEY, id, COOKIE_MAX_AFTER_AGE);
+        saveAudience3rdAccessLog(id, true);
         return;
     }
 
@@ -218,6 +223,20 @@ public class MicroDmpCore extends Controller {
         }
 
         return false;
+    }
+
+    public static void saveAudience3rdAccessLog(String cookieId, boolean isFirst) {
+
+        Audience3rdAccessLog audience3rdAccessLog = new Audience3rdAccessLog();
+        audience3rdAccessLog.audienceCookieId = cookieId;
+        audience3rdAccessLog.isFirst = isFirst ? 1 : 0;
+        audience3rdAccessLog.ua = request().getHeader("User-Agent");
+        audience3rdAccessLog.ip = request().getHeader("REMOTE_ADDR");
+        audience3rdAccessLog.accessHostName = request().getHeader("Referer") != null ? request().getHeader("Referer") : "";
+        audience3rdAccessLog.accessUrl = request().getHeader("Referer") != null ? request().getHeader("Referer") : "";
+
+        Audience3rdAccessLog.create(audience3rdAccessLog);
+
     }
 
 }
