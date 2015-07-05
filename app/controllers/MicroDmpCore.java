@@ -6,6 +6,7 @@ import play.mvc.*;
 import play.Logger;
 import views.html.index;
 // Java8 lib
+import java.net.URL;
 import java.util.Base64;
 
 
@@ -227,16 +228,33 @@ public class MicroDmpCore extends Controller {
 
     public static void saveAudience3rdAccessLog(String cookieId, boolean isFirst) {
 
+        // http://nginx.org/en/docs/http/ngx_http_core_module.html
+        // Embedded Variables
         Audience3rdAccessLog audience3rdAccessLog = new Audience3rdAccessLog();
         audience3rdAccessLog.audienceCookieId = cookieId;
         audience3rdAccessLog.isFirst = isFirst ? 1 : 0;
         audience3rdAccessLog.ua = request().getHeader("User-Agent");
-        audience3rdAccessLog.ip = request().getHeader("REMOTE_ADDR");
-        audience3rdAccessLog.accessHostName = request().getHeader("Referer") != null ? request().getHeader("Referer") : "";
+        audience3rdAccessLog.ip = request().getHeader("X-Real-IP");
+        audience3rdAccessLog.accessHostName = request().getHeader("Referer") != null ? url2Hostname(request().getHeader("Referer")) : "";
         audience3rdAccessLog.accessUrl = request().getHeader("Referer") != null ? request().getHeader("Referer") : "";
 
         Audience3rdAccessLog.create(audience3rdAccessLog);
 
+    }
+
+    public static String url2Hostname(String url) {
+        String hostname = "";
+        // FIXME 高速化する場合は自前で文字列を分解する
+        try {
+            URL urlObject = new URL(url);
+            hostname =  urlObject.getHost();
+        }
+        catch (Exception e) {
+            // TODO
+            Logger.debug(e.toString());
+
+        }
+        return hostname;
     }
 
 }
