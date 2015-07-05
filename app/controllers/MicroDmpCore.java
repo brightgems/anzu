@@ -19,6 +19,11 @@ public class MicroDmpCore extends Controller {
     // COOKIEはドメインごとに区別されるのでここではMDMPなどフレームワークの固有名詞は不要だが、ローカルホストをよく開発で使うのでここではつけておく
     private static final String COOKIE_ID_KEY = "MICRO_DMP_3RD_COOKIE_ID";
 
+    private static final String COOKIE_OPT_OUT_KEY = "MICRO_DMP_OPT_OUT";
+
+    // オプトアウトが有効である場合の値（今回はフラグとして扱うので1に設定、APでは0に設定することはない
+    private static final String COOKIE_OPT_OUT_VALUE = "1";
+
     // Cookieの有効期限は1年間にしておく(対象のサービスに1年間はアクセスしなくてもオーディエンスとして扱う）
     private static final int COOKIE_MAX_AFTER_AGE = 31622400;
 
@@ -43,10 +48,28 @@ public class MicroDmpCore extends Controller {
             return ok();
         }
 
+        // ブラウザにオプトアウトのCookieがある場合トラッキング処理はしない
+        if(isOptOut()) {
+            return ok();
+        }
+
         processingCookieId();
 
         response().setContentType("image/gif");
         return ok(onePixcelGifBytes);
+    }
+
+    /**
+     * オプトアウトのリクエストを処理します。
+     * Cookieにオプトアウトの設定をします。
+     *
+     * @return
+     */
+    public Result optOut(){
+        // FIXME　本来はオプトアウトのクッキーの有効期限は無限が好ましい
+        response().setCookie(COOKIE_OPT_OUT_KEY, "1", COOKIE_MAX_AFTER_AGE);
+        Logger.debug("set optout cookie!");
+        return ok();
     }
 
 
@@ -174,6 +197,24 @@ public class MicroDmpCore extends Controller {
         if (applicationDntFlag) {
             Logger.debug("--- DNT ON ---");
             return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * リクエストのCookie値を取得しOPTOUTしているオーディエンスかを判定します
+     * @return
+     */
+    public static boolean isOptOut() {
+        if(request().cookie(COOKIE_OPT_OUT_KEY) != null) {
+            Http.Cookie cookie = request().cookie(COOKIE_OPT_OUT_KEY);
+            Logger.debug("OptOut Cookie Value=" + cookie.value());
+
+            if (cookie.value().equals(COOKIE_OPT_OUT_VALUE)) {
+                Logger.debug("is OptOut Cookie.");
+                return true;
+            }
         }
 
         return false;
