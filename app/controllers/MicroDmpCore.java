@@ -1,5 +1,6 @@
 package controllers;
 
+import play.Play;
 import play.mvc.*;
 import play.Logger;
 import views.html.index;
@@ -36,6 +37,11 @@ public class MicroDmpCore extends Controller {
     // pixcel tracking
     // ref https://support.google.com/dfp_premium/answer/1347585?hl=ja
     public Result pixcelTracking() {
+
+        // ブラウザのDNTとDMPのDNT設定が有効の場合トラッキング処理はしない
+        if (isDNT()) {
+            return ok();
+        }
 
         processingCookieId();
 
@@ -140,6 +146,37 @@ public class MicroDmpCore extends Controller {
             // TODO
         }
         return macAdress;
+    }
+
+    /**
+     * DNT判定処理
+     *
+     * @return ブラウザのDNTとDMPのDNT設定が有効の場合true、それ以外の場合false
+     */
+    public static boolean isDNT() {
+        Http.Request req = play.mvc.Http.Context.current().request();
+        String rawRequestDntFlag = req.getHeader("DNT");
+        boolean requestDntFlag = false;
+
+        Logger.debug("rawRequestDntFlag=" + rawRequestDntFlag);
+
+        if (rawRequestDntFlag != null){
+            requestDntFlag = Integer.valueOf(rawRequestDntFlag) == 1 ? true : false;
+        }
+
+        if(requestDntFlag == false) {
+            return false;
+        }
+
+        Boolean applicationDntFlag = Play.application().configuration().getBoolean("ad.dnt.enable");
+        Logger.debug("applicationDntFlag=" + applicationDntFlag);
+
+        if (applicationDntFlag) {
+            Logger.debug("--- DNT ON ---");
+            return true;
+        }
+
+        return false;
     }
 
 }
